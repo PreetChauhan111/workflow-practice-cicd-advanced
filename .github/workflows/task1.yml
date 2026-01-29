@@ -11,7 +11,7 @@ jobs:
     runs-on: [self-hosted, docker]
     steps:
       - name: Code Checkout
-        run: actions/checkout@v4
+        uses: actions/checkout@v4
       - name: remove old container
         run: docker rm -f ${{ env.NAME }} || true
       - name: build image
