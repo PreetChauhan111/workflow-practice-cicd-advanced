@@ -57,7 +57,7 @@ jobs:
           for i in {1..20}
           do
             echo "Attempt $i..."
-            if curl -v http://localhost:$PORT 
+            if curl -sf http://localhost:$PORT 
             then
               echo "HEALTHY=true" >> $GITHUB_ENV
               exit 0
