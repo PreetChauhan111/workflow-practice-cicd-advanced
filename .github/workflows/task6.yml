@@ -42,7 +42,7 @@ jobs:
         run: |
           docker run -d \
             --restart unless-stopped \
-            --network task6-net
+            --network task6-net \
             --name ${NAME}-${COLOR} \
             ${NAME}-website:latest
 
@@ -51,7 +51,7 @@ jobs:
         run: |
           docker run -d \
             --restart unless-stopped \
-            --network task6-net
+            --network task6-net \
             --name ${NAME}-${COLOR} \
             ${NAME}-website:latest
   
@@ -86,6 +86,7 @@ jobs:
           then
             docker run -d \
             --restart unless-stopped \
+            --network task6-net \
             -p 8080:80 \
             -v $PWD/nginx:/etc/nginx/conf.d \
             --name ${NAME}-nginx \
