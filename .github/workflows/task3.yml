@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - v*
-    paths:
-      - task3/**
 
 env:
   NAME: "task3-website"
@@ -19,11 +17,13 @@ jobs:
       - name: remove old container
         run: docker rm -f ${{ env.NAME }} || true
       - name: build image
-        run: docker build -t ${{ env.NAME }}:1.0 task3
+        run: docker build -t ${{ env.NAME }}:${{ github.ref_name }} task3
       - name: Run new container
         run: |
           docker run -d \
           --restart unless-stopped \
           -p 8080:80 \
           --name ${{ env.NAME }} \
-          ${{ env.NAME }}:1.0
+          ${{ env.NAME }}:${{ github.ref_name }}      
+      - name: Print deployed version
+        run: echo "Deployed version = ${{ github.ref_name }}"
