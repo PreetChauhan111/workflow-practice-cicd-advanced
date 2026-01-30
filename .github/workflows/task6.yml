@@ -44,6 +44,7 @@ jobs:
       - name: Start new application container
         shell: bash
         run: |
+          docker rm -f ${{ env.APP_NAME }}-${{ env.COLOR }} || true
           docker run -d \
             --restart unless-stopped \
             --network ${{ env.NETWORK }} \
@@ -53,7 +54,6 @@ jobs:
       - name: Generate nginx config
         shell: bash
         run: |
-          rm -rf nginx
           mkdir -p nginx
           cat <<EOF > nginx/default.conf
           resolver 127.0.0.11 valid=10s;
@@ -71,21 +71,18 @@ jobs:
             }
           }
           EOF
-      - name: Start or reload nginx
+
+      - name: Start nginx
         shell: bash
         run: |
-          if docker ps -a --format '{{.Names}}' | grep -q "${{ env.NGINX }}"; then
-            docker exec ${{ env.NGINX }} nginx -t
-            docker exec ${{ env.NGINX }} nginx -s reload
-          else
-            docker run -d \
-              --restart unless-stopped \
-              --network ${{ env.NETWORK }} \
-              -p 8080:80 \
-              -v $PWD/nginx:/etc/nginx/conf.d \
-              --name ${{ env.NGINX }} \
-              nginx:alpine
-          fi
+          docker rm -f ${{ env.NGINX }} || true
+          docker run -d \
+            --restart unless-stopped \
+            --network ${{ env.NETWORK }} \
+            -p 8080:80 \
+            -v $PWD/nginx:/etc/nginx/conf.d:ro \
+            --name ${{ env.NGINX }} \
+            nginx:alpine
 
       - name: Remove old application container
         shell: bash
