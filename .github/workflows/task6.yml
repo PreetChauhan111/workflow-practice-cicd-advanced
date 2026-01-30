@@ -21,11 +21,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # 1️⃣ Ensure Docker network exists
       - name: Ensure Docker network
+        shell: bash
         run: |
           docker network inspect ${{ env.NETWORK }} >/dev/null 2>&1 \
           || docker network create ${{ env.NETWORK }}
 
+      # 2️⃣ Decide blue / green
       - name: Decide active color
         shell: bash
         run: |
@@ -37,10 +40,13 @@ jobs:
             echo "OLD_COLOR=green" >> $GITHUB_ENV
           fi
 
+      # 3️⃣ Build application image
       - name: Build application image
         run: docker build -t ${{ env.IMAGE }}:latest task6
 
+      # 4️⃣ Start NEW application container (no public ports)
       - name: Start new application container
+        shell: bash
         run: |
           docker run -d \
             --restart unless-stopped \
@@ -48,8 +54,11 @@ jobs:
             --name ${{ env.APP_NAME }}-${{ env.COLOR }} \
             ${{ env.IMAGE }}:latest
 
+      # 5️⃣ Generate nginx config pointing to NEW container
       - name: Generate nginx config
+        shell: bash
         run: |
+          rm -rf nginx
           mkdir -p nginx
           cat > nginx/default.conf <<EOF
           upstream app {
@@ -68,21 +77,24 @@ jobs:
           }
           EOF
 
+      # 6️⃣ Start nginx OR reload config
       - name: Start or reload nginx
+        shell: bash
         run: |
           if docker ps --format '{{.Names}}' | grep -q "${{ env.NGINX }}"; then
-            docker cp nginx/default.conf ${{ env.NGINX }}:/etc/nginx/conf.d/default.conf
             docker exec ${{ env.NGINX }} nginx -s reload
           else
             docker run -d \
               --restart unless-stopped \
               --network ${{ env.NETWORK }} \
               -p 8080:80 \
-              -v $PWD/nginx/default.conf:/etc/nginx/conf.d/default.conf \
+              -v $PWD/nginx:/etc/nginx/conf.d \
               --name ${{ env.NGINX }} \
               nginx:alpine
           fi
 
+      # 7️⃣ Remove OLD container (after traffic switch)
       - name: Remove old application container
+        shell: bash
         run: |
           docker rm -f ${{ env.APP_NAME }}-${{ env.OLD_COLOR }} || true
