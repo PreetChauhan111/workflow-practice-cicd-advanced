@@ -76,7 +76,8 @@ jobs:
         shell: bash
         run: |
           if docker ps --format '{{.Names}}' | grep -q "${{ env.NGINX }}"; then
-            echo "nginx already running"
+            echo "nginx already running, reloading config"
+            docker exec ${{ env.NGINX }} nginx -s reload
           else
             docker run -d \
               --network ${{ env.NETWORK }} \
