@@ -24,8 +24,8 @@ jobs:
       - name: Ensure Docker network exists
         shell: bash
         run: |
-          docker network inspect ${{ env.NETWORK }} >/dev/null 2>&1 \
-          || docker network create ${{ env.NETWORK }}
+          docker network inspect ${{ env.NETWORK }} >/dev/null 2>&1 || \
+          docker network create ${{ env.NETWORK }}
 
       - name: Decide deployment color
         shell: bash
@@ -39,12 +39,9 @@ jobs:
           fi
 
       - name: Build application image
-        shell: bash
-        run: |
-          docker build -t ${{ env.IMAGE }}:latest task6
+        run: docker build -t ${{ env.IMAGE }}:latest task6
 
       - name: Start new application container
-        shell: bash
         run: |
           docker rm -f ${{ env.APP_NAME }}-${{ env.COLOR }} || true
           docker run -d \
@@ -53,15 +50,14 @@ jobs:
             ${{ env.IMAGE }}:latest
 
       - name: Switch active container
-        shell: bash
         run: |
           docker rm -f ${{ env.APP_NAME }}-active || true
           docker rename ${{ env.APP_NAME }}-${{ env.COLOR }} ${{ env.APP_NAME }}-active
 
       - name: Start nginx reverse proxy
-        shell: bash
         run: |
           mkdir -p nginx
+          test -f nginx/default.conf
           docker rm -f ${{ env.NGINX }} || true
           docker run -d \
             --network ${{ env.NETWORK }} \
@@ -71,6 +67,5 @@ jobs:
             nginx:alpine
 
       - name: Remove old application container
-        shell: bash
         run: |
           docker rm -f ${{ env.APP_NAME }}-${{ env.OLD_COLOR }} || true
