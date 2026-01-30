@@ -22,15 +22,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Ensure Docker network exists
-        shell: bash
         run: |
           docker network inspect ${{ env.NETWORK }} >/dev/null 2>&1 || \
           docker network create ${{ env.NETWORK }}
 
       - name: Decide deployment color
-        shell: bash
         run: |
-          if docker ps --format '{{.Names}}' | grep -q "${{ env.APP_NAME }}-blue"; then
+          if docker ps --format '{{.Names}}' | grep -q task6-blue; then
             echo "COLOR=green" >> $GITHUB_ENV
             echo "OLD_COLOR=blue" >> $GITHUB_ENV
           else
@@ -43,29 +41,39 @@ jobs:
 
       - name: Start new application container
         run: |
-          docker rm -f ${{ env.APP_NAME }}-${{ env.COLOR }} || true
+          docker rm -f task6-${{ env.COLOR }} || true
           docker run -d \
             --network ${{ env.NETWORK }} \
-            --name ${{ env.APP_NAME }}-${{ env.COLOR }} \
+            --name task6-${{ env.COLOR }} \
             ${{ env.IMAGE }}:latest
 
       - name: Switch active container
         run: |
-          docker rm -f ${{ env.APP_NAME }}-active || true
-          docker rename ${{ env.APP_NAME }}-${{ env.COLOR }} ${{ env.APP_NAME }}-active
+          docker rm -f task6-active || true
+          docker rename task6-${{ env.COLOR }} task6-active
 
-      - name: Start nginx reverse proxy
+      - name: Start nginx reverse proxy (SAFE MODE)
         run: |
-          mkdir -p nginx
-          test -f nginx/default.conf
-          docker rm -f ${{ env.NGINX }} || true
+          docker rm -f task6-nginx || true
           docker run -d \
             --network ${{ env.NETWORK }} \
             -p 8080:80 \
-            -v $PWD/nginx:/etc/nginx/conf.d:ro \
-            --name ${{ env.NGINX }} \
-            nginx:alpine
+            --name task6-nginx \
+            nginx:alpine \
+            sh -c 'cat <<EOF >/tmp/nginx.conf
+            server {
+              listen 80;
+              location / {
+                proxy_pass http://task6-active:80;
+                proxy_set_header Host \$host;
+                proxy_set_header X-Real-IP \$remote_addr;
+                proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto \$scheme;
+              }
+            }
+            EOF
+            nginx -c /tmp/nginx.conf -g "daemon off;"'
 
       - name: Remove old application container
         run: |
-          docker rm -f ${{ env.APP_NAME }}-${{ env.OLD_COLOR }} || true
+          docker rm -f task6-${{ env.OLD_COLOR }} || true
