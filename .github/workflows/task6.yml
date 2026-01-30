@@ -16,7 +16,15 @@ jobs:
     steps:
       - name: Code Checkout
         uses: actions/checkout@v4
-      
+
+      - name: Build Image
+        run: |
+         docker build -t ${{ env.NAME }}-website:latest task6
+    
+  deploy:
+    needs: build
+    runs-on: [self-hosted, docker]
+    steps:
       - name: Decide Color
         shell: bash
         run: |
@@ -28,15 +36,7 @@ jobs:
             echo "COLOR=blue" >> $GITHUB_ENV
             echo "OLD_COLOR=green" >> $GITHUB_ENV 
           fi
-        
-      - name: Build Image
-        run: |
-         docker build -t ${{ env.NAME }}-website:latest task6
-    
-  deploy:
-    needs: build
-    runs-on: [self-hosted, docker]
-    steps:
+
       - name: Run Blue Container
         if: ${{ env.COLOR == 'blue' }}
         run: |
@@ -56,6 +56,7 @@ jobs:
       - name: Build nginx.conf
         shell: bash
         run: |
+          rm -rf nginx.conf
           cat > nginx.conf <<EOF
           upstream app {
             server ${NAME}-${COLOR}:80;
