@@ -52,25 +52,28 @@ jobs:
           ${{ env.NAME }}-website:latest
 
       - name: Container Health Check
+        id: health
+        shell: bash
         run: |
-          echo "HEALTHY=false" >> $GITHUB_ENV
-          for i in {1..20}
+          for i in {1..10}
           do
             echo "Attempt $i..."
             if docker exec "${{ env.NAME }}-${{ env.COLOR }}" curl -sf http://localhost:80
             then
-              echo "HEALTHY=true" >> $GITHUB_ENV
+              echo "HEALTHY=true" >> $GITHUB_OUTPUT
               exit 0
             fi
-            sleep 3
+            sleep 2
           done
+          echo "HEALTHY=false" >> $GITHUB_OUTPUT
+          exit 0
 
       - name: Rollback if Unhealthy
-        if: ${{ env.HEALTHY == 'false' }}
+        if: steps.health.outputs.HEALTHY == 'false'
         run: |
           docker rm -f ${{ env.NAME }}-${{ env.COLOR }} || true
-      - name: Remove Old Container
 
-        if: ${{ env.HEALTHY == 'true' }}
+      - name: Remove Old Container
+        if: steps.health.outputs.HEALTHY == 'true'
         run: |
           docker rm -f ${{ env.NAME }}-${{ env.OLD_COLOR }} || true
