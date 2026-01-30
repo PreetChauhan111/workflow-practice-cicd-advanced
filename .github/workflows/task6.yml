@@ -52,6 +52,20 @@ jobs:
             --name ${{ env.APP_NAME }}-${{ env.COLOR }} \
             ${{ env.IMAGE }}:latest
 
+      - name: Wait for new container to be ready
+        shell: bash
+        run: |
+          echo "Waiting for application to become ready..."
+          for i in {1..20}; do
+            if docker exec ${{ env.APP_NAME }}-${{ env.COLOR }} wget -qO- http://localhost:80 >/dev/null 2>&1; then
+              echo "Application is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Application did not become ready in time"
+          exit 1
+
       - name: Switch active container (zero downtime)
         shell: bash
         run: |
