@@ -56,6 +56,8 @@ jobs:
       - name: Build nginx.conf
         shell: bash
         run: |
+          rm -rf nginx
+          mkdir -p nginx
           cat > nginx/default.conf <<EOF
           upstream app {
             server ${NAME}-${COLOR}:80;
@@ -81,9 +83,13 @@ jobs:
             --name ${NAME}-nginx \
             nginx:alpine
           fi
-
+          
+      - name: Delete if fail
+        if: failure()
+        run: docker rm -f task6-blue task6-green task6-nginx
+      
       - name: reload nginx
         run: docker exec ${NAME}-nginx nginx -s reload
-      
+
       - name: Remove old container
         run: docker rm -f ${NAME}-${OLD_COLOR} || true
