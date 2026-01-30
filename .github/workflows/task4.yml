@@ -1,0 +1,48 @@
+name: Task 4
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - task4/**
+
+env:
+  COLOR: blue
+  NAME: task4
+
+jobs:
+  build:
+    runs-on: [self-hosted, docker]
+    steps:
+      - name: Code Checkout
+        uses: actions/checkout@v4
+      - name: Determine Traffic
+        run: |
+          if docker ps --format '{{.Names}}' | grep task4-blue
+          then
+            ${{ env.COLOR }} == 'green'
+            echo "Rerouted traffic to task4-${{ env.COLOR }}"
+          else
+            ${{ env.COLOR }} == 'blue'
+            echo "Rerouted traffic to task4-${{ env.COLOR }}"
+      - name: Build image
+        run: docker build -t ${{ env.NAME }}-${{ env.COLOR }}:1.0 task4
+      - name: Run new container Blue
+        if: env.COLOR == 'blue'
+        run: |
+          docker run -d \
+          --restart unless-stopped \
+          -p 8080:80 \
+          --name ${{ env.NAME }}-${{ env.COLOR }} \
+          ${{ env.NAME }}-${{ env.COLOR }}:1.0
+      - name: Run new container Green
+        if: env.COLOR == 'green'
+        run: |
+          docker run -d \
+          --restart unless-stopped \
+          -p 8081:80 \
+          --name ${{ env.NAME }}-${{ env.COLOR }} \
+          ${{ env.NAME }}-${{ env.COLOR }}:1.0
+      - name: Remove old container
+        run: docker rm -f ${{ env.NAME }}-${{ !env.COLOR }} || true
