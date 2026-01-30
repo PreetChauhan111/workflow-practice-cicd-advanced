@@ -57,7 +57,7 @@ jobs:
           for i in {1..20}
           do
             echo "Attempt $i..."
-            if curl -sf http://localhost:$PORT 
+            if docker exec "${{ env.NAME }}-${{ env.COLOR }}" curl -sf http://localhost:80
             then
               echo "HEALTHY=true" >> $GITHUB_ENV
               exit 0
