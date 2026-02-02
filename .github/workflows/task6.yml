@@ -48,16 +48,18 @@ jobs:
         run: |
           docker rm -f ${{ env.APP_NAME }}-${{ env.COLOR }} || true
           docker run -d \
-            --network ${{ env.NETWORK }} \
-            --name ${{ env.APP_NAME }}-${{ env.COLOR }} \
-            ${{ env.IMAGE }}:latest
+          --name ${{ env.APP_NAME }}-${{ env.COLOR }} \
+          --network ${{ env.NETWORK }} \
+          --restart unless-stopped \
+          ${{ env.IMAGE }}:latest
 
       - name: Wait for new container to be ready
         shell: bash
         run: |
           echo "Waiting for application to become ready..."
           for i in {1..20}; do
-            if docker exec ${{ env.APP_NAME }}-${{ env.COLOR }} wget -qO- http://localhost:80 >/dev/null 2>&1; then
+            if docker exec ${{ env.APP_NAME }}-${{ env.COLOR }} wget -qO- http://localhost:80 >/dev/null 2>&1
+            then
               echo "Application is ready"
               exit 0
             fi
@@ -72,7 +74,7 @@ jobs:
           docker rm -f ${{ env.APP_NAME }}-active || true
           docker rename ${{ env.APP_NAME }}-${{ env.COLOR }} ${{ env.APP_NAME }}-active
 
-      - name: Ensure nginx reverse proxy is running (zero downtime + no 502)
+      - name: Ensure nginx reverse proxy is running (stable + zero downtime)
         shell: bash
         run: |
           if docker ps --format '{{.Names}}' | grep -q "${{ env.NGINX }}"; then
@@ -80,31 +82,12 @@ jobs:
             docker exec ${{ env.NGINX }} nginx -s reload
           else
             docker run -d \
-              --network ${{ env.NETWORK }} \
-              -p 8080:80 \
-              --name ${{ env.NGINX }} \
-              --entrypoint sh \
-              nginx:alpine \
-              -c 'cat <<EOF >/etc/nginx/conf.d/default.conf
-              resolver 127.0.0.11 valid=5s;
-
-              server {
-                listen 80;
-
-                location / {
-                  set \$backend task6-active;
-                  proxy_pass http://\$backend:80;
-
-                  proxy_set_header Host \$host;
-                  proxy_set_header X-Real-IP \$remote_addr;
-                  proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                  proxy_set_header X-Forwarded-Proto \$scheme;
-                }
-              }
-              EOF
-              nginx -g "daemon off;"'
-                        fi
-
+            --name ${{ env.NGINX }} \
+            --network ${{ env.NETWORK }} \
+            -p 8080:80 \
+            -v $PWD/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro \
+            nginx:alpine
+          fi
       - name: Remove old application container
         shell: bash
         run: |
